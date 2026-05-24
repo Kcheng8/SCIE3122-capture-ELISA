@@ -160,122 +160,204 @@ tp_60 = process_timepoint(raw_data_60min, "60 min")
 results = [tp_20, tp_40, tp_60]
 
 # ============================================================================
-# PLOTTING
+# SAMPLE BACK-CALCULATION
 # ============================================================================
 
-fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+def od_to_conc(od, A, B, C, D):
+    """
+    Invert 4PL: OD → concentration (µg/mL).
+    Returns NaN for any OD outside the asymptote range [A, D].
+    """
+    od = np.asarray(od, dtype=float)
+    result = np.full_like(od, np.nan)
+    in_range = (od > A) & (od < D)
+    result[in_range] = C * ((A - D) / (od[in_range] - D) - 1) ** (1.0 / B)
+    return result
 
-for ax, tp in zip(axes, results):
-    
-    # Scatter: Standard 1 (blue circles)
-    for i, row_od in enumerate(tp['std1_rows']):
-        ax.scatter(tp['std1_conc'], row_od, 
-                  color="#1f77b4", s=40, alpha=0.6, 
+
+# ─── FILL IN YOUR SAMPLE OD VALUES BELOW ────────────────────────────────────
+# dilution_factor: 1 = neat, 10 = 1:10 dilution, etc.
+# od_XXmin: blank-subtracted OD replicates for that timepoint plate
+
+SAMPLES = [
+    dict(name="Partially buffer exchanged intracellular", plate="P2",
+         dilution_factor=1,
+         od_20min=[np.nan, np.nan, np.nan],
+         od_40min=[np.nan, np.nan, np.nan],
+         od_60min=[np.nan, np.nan, np.nan]),
+    dict(name="yBFV SN after PEG & sucrose cushion", plate="P2",
+         dilution_factor=10,
+         od_20min=[np.nan, np.nan, np.nan],
+         od_40min=[np.nan, np.nan, np.nan],
+         od_60min=[np.nan, np.nan, np.nan]),
+    dict(name="yBFV total intracellular before cushion", plate="P2",
+         dilution_factor=10,
+         od_20min=[np.nan, np.nan, np.nan],
+         od_40min=[np.nan, np.nan, np.nan],
+         od_60min=[np.nan, np.nan, np.nan]),
+    dict(name="yBFV total intracellular after cushion", plate="P2",
+         dilution_factor=1,
+         od_20min=[np.nan, np.nan, np.nan],
+         od_40min=[np.nan, np.nan, np.nan],
+         od_60min=[np.nan, np.nan, np.nan]),
+    dict(name="FortiCHO long slow spin", plate="P3",
+         dilution_factor=10,
+         od_20min=[np.nan, np.nan, np.nan],
+         od_40min=[np.nan, np.nan, np.nan],
+         od_60min=[np.nan, np.nan, np.nan]),
+    dict(name="SF900 long slow spin", plate="P3",
+         dilution_factor=10,
+         od_20min=[np.nan, np.nan, np.nan],
+         od_40min=[np.nan, np.nan, np.nan],
+         od_60min=[np.nan, np.nan, np.nan]),
+]
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def back_calculate_samples(samples, tp_20, tp_40, tp_60):
+    """Back-calculate undiluted concentrations from raw ODs using fitted 4PL parameters."""
+    tp_map = {'20min': tp_20, '40min': tp_40, '60min': tp_60}
+    out = []
+    for s in samples:
+        row = dict(name=s['name'], plate=s['plate'], dilution_factor=s['dilution_factor'])
+        for key, tp in tp_map.items():
+            od_vals = np.array(s[f'od_{key}'], dtype=float)
+            conc = od_to_conc(od_vals, tp['A'], tp['B'], tp['C'], tp['D']) * s['dilution_factor']
+            n_valid = int(np.sum(~np.isnan(conc)))
+            row[f'mean_{key}'] = float(np.nanmean(conc)) if n_valid > 0 else np.nan
+            row[f'sd_{key}']   = float(np.nanstd(conc, ddof=1)) if n_valid > 1 else np.nan
+        out.append(row)
+    return out
+
+
+sample_results = back_calculate_samples(SAMPLES, tp_20, tp_40, tp_60)
+
+
+if __name__ == '__main__':
+    # ============================================================================
+    # PLOTTING
+    # ============================================================================
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+
+    for ax, tp in zip(axes, results):
+
+        for i, row_od in enumerate(tp['std1_rows']):
+            ax.scatter(tp['std1_conc'], row_od,
+                      color="#1f77b4", s=40, alpha=0.6,
+                      label="Std 1 (10 µg/mL)" if i == 0 else "")
+
+        for i, row_od in enumerate(tp['std2_rows']):
+            ax.scatter(tp['std2_conc'], row_od,
+                      color="#2ca02c", s=40, alpha=0.6, marker="s",
+                      label="Std 2 (8 µg/mL)" if i == 0 else "")
+
+        xx = np.logspace(-5, 1.2, 200)
+        yy = fourpl(xx, tp['A'], tp['B'], tp['C'], tp['D'])
+        ax.plot(xx, yy, 'k-', lw=2, label=f"4PL fit (R²={tp['r2']:.4f})")
+
+        span = tp['D'] - tp['A']
+        usable_low = tp['A'] + 0.15 * span
+        usable_high = tp['A'] + 0.80 * span
+        ax.axhspan(usable_low, usable_high, alpha=0.1, color="green",
+                  label="Usable range (15-80%)")
+
+        ax.set_xscale('log')
+        ax.set_xlabel('Concentration (µg/mL)', fontsize=11, fontweight='bold')
+        ax.set_ylabel('OD₄₀₅ (blank-subtracted)', fontsize=11, fontweight='bold')
+        ax.set_title(f"Standard curve — {tp['timepoint']}\nEC₅₀ = {tp['C']:.3f} µg/mL",
+                    fontsize=12, fontweight='bold')
+        ax.grid(True, alpha=0.3, which='both', linestyle='--')
+        ax.legend(fontsize=9, loc='upper left', framealpha=0.95)
+        ax.set_xlim(1e-5, 10)
+
+    plt.tight_layout()
+    plt.savefig('standard_curves.png', dpi=300, bbox_inches='tight')
+    print("✓ Saved: standard_curves.png")
+    plt.show()
+
+    # ============================================================================
+    # PLOT JUST 60 MINUTE TIMEPOINT
+    # ============================================================================
+
+    fig, ax = plt.subplots(figsize=(10, 7))
+
+    for i, row_od in enumerate(tp_60['std1_rows']):
+        ax.scatter(tp_60['std1_conc'], row_od,
+                  color="#1f77b4", s=80, alpha=0.7,
                   label="Std 1 (10 µg/mL)" if i == 0 else "")
-    
-    # Scatter: Standard 2 (green squares)
-    for i, row_od in enumerate(tp['std2_rows']):
-        ax.scatter(tp['std2_conc'], row_od, 
-                  color="#2ca02c", s=40, alpha=0.6, marker="s",
+
+    for i, row_od in enumerate(tp_60['std2_rows']):
+        ax.scatter(tp_60['std2_conc'], row_od,
+                  color="#2ca02c", s=80, alpha=0.7, marker="s",
                   label="Std 2 (8 µg/mL)" if i == 0 else "")
-    
-    # Fitted 4PL curve
+
     xx = np.logspace(-5, 1.2, 200)
-    yy = fourpl(xx, tp['A'], tp['B'], tp['C'], tp['D'])
-    ax.plot(xx, yy, 'k-', lw=2, label=f"4PL fit (R²={tp['r2']:.4f})")
-    
-    # Usable OD range (15-80% of span)
-    span = tp['D'] - tp['A']
-    usable_low = tp['A'] + 0.15 * span
-    usable_high = tp['A'] + 0.80 * span
-    ax.axhspan(usable_low, usable_high, alpha=0.1, color="green", 
+    yy = fourpl(xx, tp_60['A'], tp_60['B'], tp_60['C'], tp_60['D'])
+    ax.plot(xx, yy, 'k-', lw=2.5, label=f"4PL fit (R²={tp_60['r2']:.4f})")
+
+    span = tp_60['D'] - tp_60['A']
+    usable_low = tp_60['A'] + 0.15 * span
+    usable_high = tp_60['A'] + 0.80 * span
+    ax.axhspan(usable_low, usable_high, alpha=0.15, color="green",
               label="Usable range (15-80%)")
-    
-    # Formatting
+
     ax.set_xscale('log')
-    ax.set_xlabel('Concentration (µg/mL)', fontsize=11, fontweight='bold')
-    ax.set_ylabel('OD₄₀₅ (blank-subtracted)', fontsize=11, fontweight='bold')
-    ax.set_title(f"Standard curve — {tp['timepoint']}\nEC₅₀ = {tp['C']:.3f} µg/mL", 
-                fontsize=12, fontweight='bold')
+    ax.set_xlabel('Concentration (µg/mL)', fontsize=13, fontweight='bold')
+    ax.set_ylabel('OD₄₀₅ (blank-subtracted)', fontsize=13, fontweight='bold')
+    ax.set_title(f"Standard curve — 60 minute timepoint\nEC₅₀ = {tp_60['C']:.3f} µg/mL",
+                fontsize=14, fontweight='bold', pad=16)
     ax.grid(True, alpha=0.3, which='both', linestyle='--')
-    ax.legend(fontsize=9, loc='upper left', framealpha=0.95)
+    ax.legend(fontsize=11, loc='upper left', framealpha=0.95)
     ax.set_xlim(1e-5, 10)
 
-plt.tight_layout()
+    plt.tight_layout()
+    plt.show()
 
-# Save outputs to current folder
-plt.savefig('standard_curves.png', dpi=300, bbox_inches='tight')
-print("✓ Saved: standard_curves.png")
+    # ============================================================================
+    # PRINT SUMMARY
+    # ============================================================================
 
-plt.show()
+    print("\n" + "="*80)
+    print("STANDARD CURVE FITTING SUMMARY")
+    print("="*80)
 
-# ============================================================================
-# PLOT JUST 60 MINUTE TIMEPOINT
-# ============================================================================
+    for tp in results:
+        print(f"\n{tp['timepoint']} timepoint:")
+        print(f"  Lower asymptote (A):       {tp['A']:.3f}")
+        print(f"  Hill coefficient (B):      {tp['B']:.3f}")
+        print(f"  EC₅₀ (C):                  {tp['C']:.3f} µg/mL")
+        print(f"  Upper asymptote (D):       {tp['D']:.3f}")
+        print(f"  R²:                        {tp['r2']:.3f}")
 
-tp_60_only = tp_60
+        span = tp['D'] - tp['A']
+        usable_low = tp['A'] + 0.15 * span
+        usable_high = tp['A'] + 0.80 * span
+        print(f"  Usable OD range:           {usable_low:.3f} – {usable_high:.3f}")
+        print(f"  Usable range span:         {usable_high - usable_low:.3f} OD units")
 
-fig, ax = plt.subplots(figsize=(10, 7))
+    print("\n" + "="*80)
+    print("4PL Equation: OD = D + (A - D) / (1 + (conc/C)^B)")
+    print("="*80 + "\n")
 
-# Scatter: Standard 1 (blue circles)
-for i, row_od in enumerate(tp_60_only['std1_rows']):
-    ax.scatter(tp_60_only['std1_conc'], row_od, 
-              color="#1f77b4", s=80, alpha=0.7, 
-              label="Std 1 (10 µg/mL)" if i == 0 else "")
+    # ============================================================================
+    # PRINT SAMPLE BACK-CALCULATION RESULTS
+    # ============================================================================
 
-# Scatter: Standard 2 (green squares)
-for i, row_od in enumerate(tp_60_only['std2_rows']):
-    ax.scatter(tp_60_only['std2_conc'], row_od, 
-              color="#2ca02c", s=80, alpha=0.7, marker="s",
-              label="Std 2 (8 µg/mL)" if i == 0 else "")
+    def _fmt(mean, sd):
+        if np.isnan(mean):
+            return f"{'BLOQ':>14}"
+        sd_str = f"±{sd:>6.4f}" if not np.isnan(sd) else "±    n/a"
+        return f"{mean:>7.4f} {sd_str}"
 
-# Fitted 4PL curve
-xx = np.logspace(-5, 1.2, 200)
-yy = fourpl(xx, tp_60_only['A'], tp_60_only['B'], tp_60_only['C'], tp_60_only['D'])
-ax.plot(xx, yy, 'k-', lw=2.5, label=f"4PL fit (R²={tp_60_only['r2']:.4f})")
-
-# Usable OD range (15-80% of span)
-span = tp_60_only['D'] - tp_60_only['A']
-usable_low = tp_60_only['A'] + 0.15 * span
-usable_high = tp_60_only['A'] + 0.80 * span
-ax.axhspan(usable_low, usable_high, alpha=0.15, color="green", 
-          label="Usable range (15-80%)")
-
-# Formatting
-ax.set_xscale('log')
-ax.set_xlabel('Concentration (µg/mL)', fontsize=13, fontweight='bold')
-ax.set_ylabel('OD₄₀₅ (blank-subtracted)', fontsize=13, fontweight='bold')
-ax.set_title(f"Standard curve — 60 minute timepoint\nEC₅₀ = {tp_60_only['C']:.3f} µg/mL", 
-            fontsize=14, fontweight='bold', pad=16)
-ax.grid(True, alpha=0.3, which='both', linestyle='--')
-ax.legend(fontsize=11, loc='upper left', framealpha=0.95)
-ax.set_xlim(1e-5, 10)
-
-plt.tight_layout()
-plt.show()
-
-# ============================================================================
-# PRINT SUMMARY
-# ============================================================================
-
-print("\n" + "="*80)
-print("STANDARD CURVE FITTING SUMMARY")
-print("="*80)
-
-for tp in results:
-    print(f"\n{tp['timepoint']} timepoint:")
-    print(f"  Lower asymptote (A):       {tp['A']:.3f}")
-    print(f"  Hill coefficient (B):      {tp['B']:.3f}")
-    print(f"  EC₅₀ (C):                  {tp['C']:.3f} µg/mL")
-    print(f"  Upper asymptote (D):       {tp['D']:.3f}")
-    print(f"  R²:                        {tp['r2']:.3f}")
-    
-    span = tp['D'] - tp['A']
-    usable_low = tp['A'] + 0.15 * span
-    usable_high = tp['A'] + 0.80 * span
-    print(f"  Usable OD range:           {usable_low:.3f} – {usable_high:.3f}")
-    print(f"  Usable range span:         {usable_high - usable_low:.3f} OD units")
-
-print("\n" + "="*80)
-print("4PL Equation: OD = D + (A - D) / (1 + (conc/C)^B)")
-print("="*80 + "\n")
+    print("\n" + "="*80)
+    print("SAMPLE BACK-CALCULATION RESULTS (undiluted concentration, µg/mL)")
+    print("="*80)
+    print(f"{'Sample':<46} {'DF':>3}   {'20 min':>14}   {'40 min':>14}   {'60 min':>14}")
+    print("-" * 99)
+    for r in sample_results:
+        print(f"{r['name']:<46} {r['dilution_factor']:>3}x  "
+              f"{_fmt(r['mean_20min'], r['sd_20min'])}   "
+              f"{_fmt(r['mean_40min'], r['sd_40min'])}   "
+              f"{_fmt(r['mean_60min'], r['sd_60min'])}")
+    print("="*80 + "\n")

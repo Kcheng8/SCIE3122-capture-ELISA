@@ -2,22 +2,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
+from plot_standard_curves import sample_results
 
 # UQ palette
 UQ_PURPLE = "#51247A"
 UQ_MAGENTA = "#962A8B"
 UQ_GREEN = "#2EA836"
 UQ_GREY = "#97999B"
-
-# Data from the table
-samples = [
-    "Partially buffer\nexchanged intracellular",
-    "yBFV SN after PEG &\nsucrose cushion (1:10)",
-    "yBFV total intracellular\nbefore cushion (1:10)",
-    "yBFV total intracellular\nafter cushion (neat)",
-    "FortiCHO long slow\nspin (1:10)",
-    "SF900 long slow\nspin (1:10)",
-]
 
 # Short names for x-axis
 short_names = [
@@ -32,14 +23,17 @@ short_names = [
 # Plate assignment
 plates = ["P2", "P2", "P2", "P2", "P3", "P3"]
 
-# Data: mean ± SD for each timepoint
+# Unpack computed concentrations — fill SAMPLES OD values in plot_standard_curves.py
+def _val(x):
+    return 0.0 if (x is None or np.isnan(x)) else x
+
 timepoints = ["20 min", "40 min", "60 min"]
-data_20 = [0, 39.7904, 0, 0, 2.8268, 8.6609]
-err_20 = [0, 4.5400, 0, 0, 0.2138, 0.8936]
-data_40 = [0, 41.8061, 0, 0, 2.3966, 8.5199]
-err_40 = [0, 3.5972, 0, 0, 0.4420, 1.0727]
-data_60 = [0, 39.6691, 0.6097, 0.2187, 2.4929, 8.8231]
-err_60 = [0, 4.6399, 0.0294, 0.0302, 0.5370, 1.3943]
+data_20 = [_val(r['mean_20min']) for r in sample_results]
+err_20  = [_val(r['sd_20min'])   for r in sample_results]
+data_40 = [_val(r['mean_40min']) for r in sample_results]
+err_40  = [_val(r['sd_40min'])   for r in sample_results]
+data_60 = [_val(r['mean_60min']) for r in sample_results]
+err_60  = [_val(r['sd_60min'])   for r in sample_results]
 
 # Create figure with more height for x-axis labels
 fig, ax = plt.subplots(figsize=(14, 8))
@@ -86,15 +80,12 @@ legend = ax.legend(title="ELISA development time", loc='upper left',
 legend.get_frame().set_edgecolor('black')
 legend.get_frame().set_linewidth(0.7)
 
-# Annotate BLOQ samples
+# Annotate BLOQ samples (auto-detected: any timepoint where OD was below the standard curve range)
 bloq_positions = [
-    (0, 0),   # P2-S1, 20 min
-    (0, 1),   # P2-S1, 40 min
-    (0, 2),   # P2-S1, 60 min
-    (2, 0),   # P2-S3, 20 min
-    (2, 1),   # P2-S3, 40 min
-    (3, 0),   # P2-S4, 20 min
-    (3, 1),   # P2-S4, 40 min
+    (i, j)
+    for i, r in enumerate(sample_results)
+    for j, key in enumerate(['mean_20min', 'mean_40min', 'mean_60min'])
+    if np.isnan(r[key])
 ]
 for sample_idx, bar_idx in bloq_positions:
     ax.text(sample_idx + (bar_idx - 1) * width, 0.015, "BLOQ", 
@@ -142,11 +133,8 @@ for i, (name, plate) in enumerate(zip(short_names, plates)):
 ax.grid(True, axis='y', alpha=0.3, which='both', linestyle='-', linewidth=0.5)
 ax.set_axisbelow(True)
 
-# Annotate BLOQ samples for 60 min
-bloq_60_positions = [0, 1, 4, 5]  # Only P2-S1 (0), P2-S2 has data, P2-S3 (2) has data, P2-S4 (3) has data, FortiCHO (4) has data, SF900 (5) has data
-# Actually, looking at data_60: [0, 39.6691, 0.6097, 0.2187, 2.4929, 8.8231]
-# Only index 0 is 0/BLOQ
-bloq_60_positions = [0]  # Only P2-S1 is BLOQ at 60 min
+# Auto-detect BLOQ at 60 min
+bloq_60_positions = [i for i, r in enumerate(sample_results) if np.isnan(r['mean_60min'])]
 for sample_idx in bloq_60_positions:
     ax.text(sample_idx, 0.015, "BLOQ", 
             ha='center', va='bottom', fontsize=8, color='red', fontweight='bold')

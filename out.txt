@@ -1,0 +1,95 @@
+
+=== Background-subtracted signals ===
+capture detector  sample  timepoint  mean_signal  sd_paired
+   11F4     11F4  BFV WT         20     1.656500   0.110668
+   11F4     11F4 GETV WT         20     0.262667   0.014935
+   11F4     11F4    bJEV         20    -0.004167   0.003869
+   11F4      B10  BFV WT         20     0.150167   0.015065
+   11F4      B10 GETV WT         20     0.054500   0.004506
+   11F4      B10    bJEV         20    -0.002833   0.005776
+    B10     11F4  BFV WT         20     0.063000   0.010881
+    B10     11F4 GETV WT         20     0.230333   0.007891
+    B10     11F4    bJEV         20    -0.000500   0.001871
+    B10      B10  BFV WT         20    -0.002833   0.003764
+    B10      B10 GETV WT         20     0.033000   0.008198
+    B10      B10    bJEV         20    -0.004167   0.003764
+   11F4     11F4  BFV WT         40     2.827333   0.079099
+   11F4     11F4 GETV WT         40     0.474667   0.013967
+   11F4     11F4    bJEV         40    -0.001500   0.002588
+   11F4      B10  BFV WT         40     0.287333   0.033756
+   11F4      B10 GETV WT         40     0.103833   0.002714
+   11F4      B10    bJEV         40    -0.000667   0.007367
+    B10     11F4  BFV WT         40     0.113000   0.021345
+    B10     11F4 GETV WT         40     0.413167   0.009579
+    B10     11F4    bJEV         40     0.002167   0.005879
+    B10      B10  BFV WT         40    -0.000500   0.004324
+    B10      B10 GETV WT         40     0.065667   0.007312
+    B10      B10    bJEV         40    -0.002167   0.004021
+   11F4     11F4  BFV WT         60     3.637667   0.122152
+   11F4     11F4 GETV WT         60     0.640000   0.014873
+   11F4     11F4    bJEV         60    -0.000667   0.004082
+   11F4      B10  BFV WT         60     0.374833   0.022851
+   11F4      B10 GETV WT         60     0.142333   0.004457
+   11F4      B10    bJEV         60    -0.002167   0.005636
+    B10     11F4  BFV WT         60     0.143000   0.027900
+    B10     11F4 GETV WT         60     0.534333   0.013307
+    B10     11F4    bJEV         60     0.000500   0.001643
+    B10      B10  BFV WT         60    -0.000667   0.003777
+    B10      B10 GETV WT         60     0.092167   0.004708
+    B10      B10    bJEV         60    -0.001667   0.003141
+
+=== S/N ratios ===
+capture detector  sample  timepoint    s_to_n
+   11F4     11F4  BFV WT         20 27.293651
+   11F4     11F4 GETV WT         20  5.169312
+   11F4     11F4    bJEV         20  0.933862
+   11F4      B10  BFV WT         20  3.495845
+   11F4      B10 GETV WT         20  1.905817
+   11F4      B10    bJEV         20  0.952909
+    B10     11F4  BFV WT         20  2.125000
+    B10     11F4 GETV WT         20  5.113095
+    B10     11F4    bJEV         20  0.991071
+    B10      B10  BFV WT         20  0.950437
+    B10      B10 GETV WT         20  1.577259
+    B10      B10    bJEV         20  0.927114
+   11F4     11F4  BFV WT         40 45.292428
+   11F4     11F4 GETV WT         40  8.436031
+   11F4     11F4    bJEV         40  0.976501
+   11F4      B10  BFV WT         40  5.597333
+   11F4      B10 GETV WT         40  2.661333
+   11F4      B10    bJEV         40  0.989333
+    B10     11F4  BFV WT         40  2.959538
+    B10     11F4 GETV WT         40  8.164740
+    B10     11F4    bJEV         40  1.037572
+    B10      B10  BFV WT         40  0.991354
+    B10      B10 GETV WT         40  2.135447
+    B10      B10    bJEV         40  0.962536
+   11F4     11F4  BFV WT         60 56.678571
+   11F4     11F4 GETV WT         60 10.795918
+   11F4     11F4    bJEV         60  0.989796
+   11F4      B10  BFV WT         60  6.826425
+   11F4      B10 GETV WT         60  3.212435
+   11F4      B10    bJEV         60  0.966321
+    B10     11F4  BFV WT         60  3.312668
+    B10     11F4 GETV WT         60  9.641509
+    B10     11F4    bJEV         60  1.008086
+    B10      B10  BFV WT         60  0.988920
+    B10      B10 GETV WT         60  2.531856
+    B10      B10    bJEV         60  0.972299
+
+=== Validation ===
+  11F4/11F4  BFV WT    20 min  PASS
+  11F4/11F4  BFV WT    40 min  PASS
+  11F4/11F4  BFV WT    60 min  PASS
+  11F4/11F4  GETV WT   20 min  PASS
+  11F4/11F4  GETV WT   40 min  PASS
+  11F4/11F4  GETV WT   60 min  PASS
+  11F4/11F4  bJEV      20 min  PASS
+  11F4/11F4  bJEV      40 min  PASS
+  11F4/11F4  bJEV      60 min  PASS
+  B10/B10  bJEV      20 min  PASS
+  B10/B10  bJEV      40 min  PASS
+  B10/B10  bJEV      60 min  PASS
+
+All validation checks passed.
+Saved: C:\Users\Kierren\Downloads\SCIE3122-capture-ELISA\figure_z.png
