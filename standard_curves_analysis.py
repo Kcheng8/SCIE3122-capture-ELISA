@@ -268,7 +268,15 @@ if __name__ == '__main__':
         ax.set_title(f"Standard curve — {tp['timepoint']}\nEC₅₀ = {tp['C']:.3f} µg/mL",
                     fontsize=12, fontweight='bold')
         ax.grid(True, alpha=0.3, which='both', linestyle='--')
-        ax.legend(fontsize=9, loc='upper left', framealpha=0.95)
+        
+        # Add 4PL equation text box
+        A, B, C, D = tp['A'], tp['B'], tp['C'], tp['D']
+        equation_text = f"$OD = {D:.3f} + \\frac{{{A:.3f} - {D:.3f}}}{{1 + \\left(\\frac{{c}}{{{C:.3f}}}\\right)^{{{B:.2f}}}}}$"
+        ax.text(0.08, 0.92, equation_text, transform=ax.transAxes,
+                fontsize=9, verticalalignment='top', horizontalalignment='left',
+                bbox=dict(boxstyle='round,pad=0.7', facecolor='white', 
+                         edgecolor='gray', linewidth=1.2, alpha=0.95))
+        
         ax.set_xlim(1e-5, 10)
 
     plt.tight_layout()
@@ -308,7 +316,15 @@ if __name__ == '__main__':
     ax.set_title(f"Standard curve — 60 minute timepoint\nEC₅₀ = {tp_60['C']:.3f} µg/mL",
                 fontsize=14, fontweight='bold', pad=16)
     ax.grid(True, alpha=0.3, which='both', linestyle='--')
-    ax.legend(fontsize=11, loc='upper left', framealpha=0.95)
+    
+    # Add 4PL equation text box
+    A, B, C, D = tp_60['A'], tp_60['B'], tp_60['C'], tp_60['D']
+    equation_text = f"$OD = {D:.3f} + \\frac{{{A:.3f} - {D:.3f}}}{{1 + \\left(\\frac{{c}}{{{C:.3f}}}\\right)^{{{B:.2f}}}}}$"
+    ax.text(0.08, 0.92, equation_text, transform=ax.transAxes,
+            fontsize=10, verticalalignment='top', horizontalalignment='left',
+            bbox=dict(boxstyle='round,pad=0.7', facecolor='white', 
+                     edgecolor='gray', linewidth=1.2, alpha=0.95))
+    
     ax.set_xlim(1e-5, 10)
 
     plt.tight_layout()
