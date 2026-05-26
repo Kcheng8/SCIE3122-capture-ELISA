@@ -162,95 +162,106 @@ for cap, det, samp, tp, expected in REFERENCES:
 print("\nAll validation checks passed.")
 
 # ---------------------------------------------------------------------------
-# Figure Z — grouped bar chart
+# Grouped bar chart — shared plotting function
 # ---------------------------------------------------------------------------
 COLORS = {20: "#1f77b4", 40: "#ff7f0e", 60: "#2ca02c"}
-N_TP      = len(TIMEPOINTS)
-N_SAMPLES = len(SAMPLE_ORDER)
 
 BAR_W     = 0.20   # width of a single bar
 INNER_GAP = 0.05   # gap between sample sub-groups within a quadrant group
 GROUP_GAP = 0.55   # extra gap between quadrant groups
 
-# Pre-compute x positions
-# Each quadrant group spans: N_SAMPLES * (N_TP * BAR_W + INNER_GAP) wide
-sample_group_w = N_TP * BAR_W + INNER_GAP
-quadrant_group_w = N_SAMPLES * sample_group_w
 
-fig, ax = plt.subplots(figsize=(16, 6))
+def plot_spot_test(timepoints, out_path, title, show_legend=True):
+    n_tp = len(timepoints)
 
-sample_label_positions = []
-sample_label_texts     = []
-group_label_positions  = []
+    sample_group_w   = n_tp * BAR_W + INNER_GAP
+    quadrant_group_w = len(SAMPLE_ORDER) * sample_group_w
 
-for g_idx, (cap, det) in enumerate(QUADRANT_ORDER):
-    group_origin = g_idx * (quadrant_group_w + GROUP_GAP)
-    group_label_positions.append(group_origin + quadrant_group_w / 2)
+    fig_w = max(8, 5 * n_tp + 3)
+    fig, ax = plt.subplots(figsize=(fig_w, 6))
 
-    for s_idx, sample in enumerate(SAMPLE_ORDER):
-        sample_origin = group_origin + s_idx * sample_group_w
-        sample_label_positions.append(sample_origin + (N_TP * BAR_W) / 2)
-        sample_label_texts.append(sample)
+    sample_label_positions = []
+    sample_label_texts     = []
+    group_label_positions  = []
 
-        for t_idx, tp in enumerate(TIMEPOINTS):
-            row = bg_subtracted.query(
-                "capture == @cap and detector == @det "
-                "and sample == @sample and timepoint == @tp"
-            )
-            mean_val = float(row["mean_signal"].iloc[0])
-            sd_val   = float(row["sd_paired"].iloc[0])
-            x = sample_origin + t_idx * BAR_W
+    for g_idx, (cap, det) in enumerate(QUADRANT_ORDER):
+        group_origin = g_idx * (quadrant_group_w + GROUP_GAP)
+        group_label_positions.append(group_origin + quadrant_group_w / 2)
 
-            ax.bar(
-                x, mean_val, BAR_W * 0.88,
-                color=COLORS[tp],
-                yerr=sd_val, capsize=3,
-                error_kw={"elinewidth": 1.2, "capthick": 1.2},
-                label=f"{tp} min" if (g_idx == 0 and s_idx == 0) else "",
-            )
+        for s_idx, sample in enumerate(SAMPLE_ORDER):
+            sample_origin = group_origin + s_idx * sample_group_w
+            sample_label_positions.append(sample_origin + (n_tp * BAR_W) / 2)
+            sample_label_texts.append(sample)
 
-# Sample sub-group labels (below bars, row 1)
-ax.set_xticks(sample_label_positions)
-ax.set_xticklabels(sample_label_texts, fontsize=8, rotation=30, ha="right")
+            for t_idx, tp in enumerate(timepoints):
+                row = bg_subtracted.query(
+                    "capture == @cap and detector == @det "
+                    "and sample == @sample and timepoint == @tp"
+                )
+                mean_val = float(row["mean_signal"].iloc[0])
+                sd_val   = float(row["sd_paired"].iloc[0])
+                x = sample_origin + t_idx * BAR_W
 
-# Capture/detector group labels (below bars, row 2) using annotation
-y_annot = -0.28  # axes fraction
-for g_idx, (cap, det) in enumerate(QUADRANT_ORDER):
-    ax.annotate(
-        f"capture {cap}\ndetector {det}",
-        xy=(group_label_positions[g_idx], 0),
-        xycoords=("data", "axes fraction"),
-        xytext=(0, -46),
-        textcoords="offset points",
-        ha="center", va="top",
-        fontsize=9, fontweight="bold",
-    )
+                ax.bar(
+                    x, mean_val, BAR_W * 0.88,
+                    color=COLORS[tp],
+                    yerr=sd_val, capsize=3,
+                    error_kw={"elinewidth": 1.2, "capthick": 1.2},
+                    label=f"{tp} min" if (g_idx == 0 and s_idx == 0) else "",
+                )
 
-# Dividers between quadrant groups
-for g_idx in range(1, len(QUADRANT_ORDER)):
-    divider_x = g_idx * (quadrant_group_w + GROUP_GAP) - GROUP_GAP / 2
-    ax.axvline(divider_x, color="grey", linewidth=0.7, linestyle="--", alpha=0.6)
+    ax.set_xticks(sample_label_positions)
+    ax.set_xticklabels(sample_label_texts, fontsize=8, rotation=30, ha="right")
 
-ax.axhline(0, color="black", linewidth=0.8)
-ax.set_ylabel("Mean background-subtracted OD (sample − mock)", fontsize=11)
-ax.set_title(
+    for g_idx, (cap, det) in enumerate(QUADRANT_ORDER):
+        ax.annotate(
+            f"capture {cap}\ndetector {det}",
+            xy=(group_label_positions[g_idx], 0),
+            xycoords=("data", "axes fraction"),
+            xytext=(0, -46),
+            textcoords="offset points",
+            ha="center", va="top",
+            fontsize=9, fontweight="bold",
+        )
+
+    for g_idx in range(1, len(QUADRANT_ORDER)):
+        divider_x = g_idx * (quadrant_group_w + GROUP_GAP) - GROUP_GAP / 2
+        ax.axvline(divider_x, color="grey", linewidth=0.7, linestyle="--", alpha=0.6)
+
+    ax.axhline(0, color="black", linewidth=0.8)
+    ax.set_ylabel("Mean background-subtracted OD (sample - mock)", fontsize=11)
+    ax.set_title(title, fontsize=12, fontweight="bold", pad=12)
+
+    if show_legend:
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(
+            handles, labels,
+            title="Development time", fontsize=10, title_fontsize=10,
+            loc="upper right", framealpha=0.9,
+        )
+
+    ax.grid(True, axis="y", alpha=0.3, linestyle="--", linewidth=0.6)
+    ax.set_axisbelow(True)
+
+    fig.tight_layout()
+    fig.subplots_adjust(bottom=0.22)
+    fig.savefig(out_path, dpi=300, bbox_inches="tight")
+    print(f"Saved: {out_path}")
+    plt.show()
+    plt.close(fig)
+
+
+base = Path(__file__).parent
+
+plot_spot_test(
+    TIMEPOINTS,
+    base / "capture_elisa_spot_test_all_timepoints.png",
     "Capture ELISA signal across antibody pairings, samples, and timepoints",
-    fontsize=12, fontweight="bold", pad=12,
 )
 
-handles, labels = ax.get_legend_handles_labels()
-ax.legend(
-    handles, labels,
-    title="Development time", fontsize=10, title_fontsize=10,
-    loc="upper right", framealpha=0.9,
+plot_spot_test(
+    [60],
+    base / "capture_elisa_spot_test_60min.png",
+    "Capture ELISA signal across antibody pairings and samples",
+    show_legend=False,
 )
-
-ax.grid(True, axis="y", alpha=0.3, linestyle="--", linewidth=0.6)
-ax.set_axisbelow(True)
-
-plt.tight_layout()
-plt.subplots_adjust(bottom=0.22)
-out_path = Path(__file__).parent / "figure_z.png"
-plt.savefig(out_path, dpi=300, bbox_inches="tight")
-print(f"Saved: {out_path}")
-plt.show()
